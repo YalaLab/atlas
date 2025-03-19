@@ -1,6 +1,8 @@
 # Atlas: Multi-Scale Attention Improves Long Context Image Modeling
-
 [Kumar Krishna Agrawal*](https://people.eecs.berkeley.edu/~krishna/), [Long Lian*](https://tonylian.com/), [Longchao Liu](), [Natalia Harguindeguy](), [Boyi Li](https://sites.google.com/site/boyilics/home), [Alexander Bick](), [Maggie Chung](), [Trevor Darrell](https://people.eecs.berkeley.edu/~trevor/),  [Adam Yala](https://www.adamyala.org/) 
+
+[![arXiv](https://img.shields.io/badge/arXiv-2503.12355-b31b1b.svg)](https://arxiv.org/abs/2503.12355)
+
 
 
 ![Atlas](figures/atlas.png)
