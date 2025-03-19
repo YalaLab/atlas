@@ -1,0 +1,135 @@
+main:
+  exp_name: example_experimentv1 # Name in WandB and results directory
+  seed: 42 # Set random seed
+  allow_overwriting_experiment_checkpoints: False
+  log_dir: .
+
+  # TODO: extend debug mode (set num workers to 0, set seed to 42)
+  debug: False # Truncate datasets to a few batches
+
+  # Iterate over datasets to generate caches
+  generate_train_caches: False
+  generate_dev_caches: False
+  generate_test_caches: False
+
+  phases:
+    train: True # Train the model
+    dev: False # Evaluate on the dev set
+    test: False # Evaluate on the test set
+    eval_train: False # Evaluate on the train set
+
+  force_loading_train_dataloader: False
+
+  use_val_as_test: False # Use validation set as test set (useful to use with `--evaluate` so that a model can be evaluated with val outside of the training loop)
+
+  checkpoints_dir: checkpoints # Path to directory where checkpoints are stored
+  
+  monitor: val_loss # Main evaluation metric for validation split, e.g. for checkpointing [val_loss, val_auc, val_acc]
+
+  # TODO: implement
+  get_dataset_stats: False # Compute channel means and standard deviations on the fly
+  # TODO: implement
+  load_checkpoint_no_strict: False # Allow loading checkpoints even if all state_dict keys do not match
+
+  disable_wandb: False # Disable logging
+
+  # Set default project and entity
+  wandb_project: Pillar
+  wandb_entity: yala-lab
+
+  tags: ["imagenet"]
+
+engine:
+  type: null
+  kwargs: 
+    resume: null
+    limit_num_batches: null
+
+dataloader:
+  batch_size: null # For training
+  eval_batch_size: null # For evaluation and testing
+  frac_train_samples: 1.0 # Fraction of training samples to use. Used for learning curve analysis. Set to 1 to include all samples
+  class_bal: False # Use balanced sampling. Requires use of custom dataset with class weights set
+  num_workers: 8 # Workers per dataloader
+  use_null_collate: False # The collate function returns None (for cache generation)
+  no_shuffle_training_set: False # No shuffle on the training set (shuffle by default)
+  train_drop_last: False # No dropping
+  prefetch_factor: null # Number of batches to prefetch
+  persistent_workers: False # Keep workers alive between epochs
+  multi_gpu_eval: True # Use multiple GPUs to eval if ddp
+  val_drop_last: False # Use full dataset in eval
+  no_cache_misses_allowed: False # Do not allow cache misses
+
+
+
+dataset:
+  type: ImageFolderDataset
+  shared_dataset_kwargs:
+    data_path: /scratch/cache/ilsvrc
+
+  dataset_train_kwargs: {}
+  dataset_dev_kwargs: {}
+  dataset_test_kwargs: {}
+
+  img_size:
+    - 224
+    - 224
+  num_chan: &num_chan 3
+  img_mean: [0.485, 0.456, 0.406]
+  img_std: [0.229, 0.224, 0.225]
+  num_classes: 1000
+  image_augmentations:
+    - type: TorchvisionRandomResizedCrop
+      kwargs:
+        size: 224
+        scale: [0.2, 1.0]
+        interpolation: 3
+    - type: TorchvisionRandomHorizontalFlip
+      kwargs: {}
+    - type: TorchvisionToTensor
+      kwargs: {}
+    - type: NormalizeTensor2d
+      kwargs: 
+        channel_means: [0.485, 0.456, 0.406]
+        channel_stds: [0.229, 0.224, 0.225]
+  test_image_augmentations:
+    - type: TorchvisionResize
+      kwargs:
+        img_size: [224, 224]
+    - type: TorchvisionCenterCrop
+      kwargs:
+        height: 224
+        width: 224
+    - type: TorchvisionToTensor
+      kwargs: {}
+    - type: NormalizeTensor2d
+      kwargs: 
+        channel_means: [0.485, 0.456, 0.406]
+        channel_stds: [0.229, 0.224, 0.225]
+  batch_augmentations: [] # Augmentations applied to batches
+
+  cache_path: null # Path to caches
+  cache_full_img: False # Cache full image locally in addition to cachable transforms
+
+  cache_last_cachable_only: True # Cache the last cacheable transformation only
+
+model:
+  type: null
+  kwargs: null
+
+
+optimizer:
+  type: null
+  kwargs: null
+
+  scheduler:
+    interval: epoch # When to update the learning rate
+    type: null
+    kwargs: null
+
+
+trainer:
+  kwargs:
+    precision: 16-mixed
+    val_check_interval: 1.
+    max_epochs: 320

@@ -1,0 +1,164 @@
+base_config: base.yaml
+
+main:
+  exp_name: atlas_d2d10_base_r1024
+  tags: ["atlas", "hr-in100",]
+  phases:
+    train: True
+    dev: True 
+    test: False
+  checkpoints_dir: ./logs/imagenet/0125
+  wandb_project:  architecture
+  wandb_entity: yala-lab
+  disable_wandb: False
+  allow_overwriting_experiment_checkpoints: True
+  ckpt_freq: 10
+  schedulefree: False
+  compile: False 
+  sync_bn: True
+  find_unused_parameters: True 
+
+metrics:
+  epoch_metrics:
+      train:
+        - type: Accuracy
+      val:
+        - type: Accuracy
+      test:
+        - type: Accuracy
+  losses:
+    - type: SoftTargetCrossEntropyLoss 
+      weight: 1.0
+      enable_at_train: True
+      enable_at_eval: False
+    - type: CrossEntropyLoss
+      weight: 1.0
+      enable_at_train: False
+      enable_at_eval: True 
+
+dataset:
+  type: ImageFolderDataset
+  shared_dataset_kwargs:
+    data_path: /scratch/cache/in100
+  num_classes: 100
+  image_augmentations:
+    - type: TimmAug
+      kwargs:
+        input_size: 1024
+        color_jitter: null
+        aa: rand-m9-mstd0.5-inc1
+        reprob: 0.25
+        remode: pixel
+        recount: 1
+        mean: [0.485, 0.456, 0.406]
+        std: [0.229, 0.224, 0.225]
+  test_image_augmentations:
+    - type: TorchvisionResize
+      kwargs:
+        img_size: [1024, 1024]
+    - type: TorchvisionCenterCrop
+      kwargs:
+        height: 1024 
+        width: 1024 
+    - type: TorchvisionToTensor
+      kwargs: {}
+    - type: NormalizeTensor2d
+      kwargs: 
+        channel_means: [0.485, 0.456, 0.406]
+        channel_stds: [0.229, 0.224, 0.225]
+
+dataloader:
+  batch_size: 32
+  eval_batch_size: 32
+  num_workers: 16
+  train_drop_last: True
+  val_drop_last: True
+  multi_gpu_eval: True
+  persistent_workers: False
+  use_null_collate: False
+  class_bal: False
+
+engine:
+  type: Classifier 
+  kwargs: 
+    accumulate_grad_batches: 8
+    max_epochs: 320
+    precision: bf16-mixed
+    log_grad_norm: False 
+    log_max_min_lr: True
+    mixup_kwargs:
+      mixup: 0.8
+      cutmix: 1.0
+      cutmix_minmax: null
+      mixup_prob: 1.0
+      mixup_switch_prob: 0.5
+      mixup_mode: batch
+      smoothing: 0.1
+
+optimizer:
+  type: AdamW
+  kwargs: 
+    lr: 0.0005
+    betas: [0.9, 0.999]
+  timm_weight_decay: 0.24
+  scheduler:
+    interval: step 
+    type: StepCosineAnnealingWarmup
+    kwargs:
+      warmup_epochs: 30
+      max_epochs: 320
+      min_lr: 1.e-6
+
+model:
+  type: Atlas
+  kwargs:
+    num_classes: 100
+    img_size: [1024, 1024, 1]
+    patch_size: [16, 16, 1]
+    in_chans: 3
+    embed_dim: 768
+    kwargs_list:
+      - img_size: [1024, 1024, 1] 
+        patch_size: 16
+        local2global: 4
+        merge_ratio: 16
+        in_dim: 64
+        dim : 768
+        num_features: 192
+        num_classes: 100
+        drop_path_rate: 0.3
+        global_pool: avg
+        class_token: False
+        depths: 2
+        qkv_bias: True
+        pre_norm: False
+        num_heads: 12
+        mlp_ratio: 4
+        embed_dim: 768 
+        embed_op: convstem
+        layer_args:
+          qkv_bias: True
+          qk_scale: None
+          input_resolution: 1024
+      - img_size: [16, 16, 1]
+        patch_size: 1
+        local2global: 4
+        merge_ratio: 16
+        num_classes: 100
+        drop_path_rate: 0.3
+        global_pool: avg
+        class_token: False
+        depths: 10
+        qkv_bias: True
+        pre_norm: False 
+        num_heads: 12
+        mlp_ratio: 4
+        embed_dim: 768
+        embed_op: conv2d
+        in_dim: 64
+        dim : 768
+        num_features: 192
+        layer_args:
+          qkv_bias: True
+          qk_scale: None
+          input_resolution: 1024
